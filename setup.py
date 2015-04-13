@@ -13,6 +13,8 @@ docs_extras = [
 testing_extras = [
     'pytest',
     'pytest-cov',
+    'WebTest',
+    'WSGIProxy2',
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
