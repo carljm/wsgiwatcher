@@ -1,4 +1,4 @@
-import sys
+import os
 from setuptools import setup, find_packages
 
 install_requires = [
@@ -15,8 +15,12 @@ testing_extras = [
     'pytest-cov',
 ]
 
-if sys.version_info[:2] == (2, 6):
-    testing_extras.append('unittest2')
+here = os.path.abspath(os.path.dirname(__file__))
+try:
+    README = open(os.path.join(here, 'README.rst')).read()
+    CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
+except IOError:
+    README = CHANGES = ''
 
 setup(
     name='wsgiwatcher',
@@ -24,7 +28,7 @@ setup(
     author='Carl Meyer, David Glick',
     author_email='',
     description='Watch files used by a WSGI app and reload the server when they change',
-    long_description='',
+    long_description=README + '\n\n' + CHANGES,
     license='MIT',
     keywords='wsgi server reload watch',
     classifiers=[
