@@ -32,7 +32,7 @@ def pidapp_file(tmpdir):
     source = HERE / 'pidapp.py'
     target = tmpdir / 'pidapp.py'
     source.copy(target)
-    return target
+    return str(target)
 
 
 @pytest.yield_fixture
@@ -43,7 +43,6 @@ def _pidapp_process_host_port(pidapp_file):
         [sys.executable, str(pidapp_file)],
         env={PIDAPP_HOST_ENVVAR: host, PIDAPP_PORT_ENVVAR: str(port)},
     )
-    #import time; time.sleep(0.5)
     yield (process, host, port)
     process.terminate()
 
@@ -61,20 +60,41 @@ def pidapp_url(_pidapp_process_host_port):
     return 'http://%s:%s' % (host, port)
 
 
-class PidAppFailedException(Exception):
+class TimeoutException(Exception):
     pass
+
+
+def _wait_for(checker, retries=5, interval=0.1):
+    for i in range(retries):
+        time.sleep(interval)
+        result = checker()
+        if result:
+            return result
+    raise TimeoutException('Timed out after {} retries'.format(retries))
 
 
 @pytest.fixture
 def pidapp(pidapp_url):
     """Return WebTest TestApp wrapper around ``pidapp_url``."""
     app = TestApp(pidapp_url)
+
     # Wait until we're actually serving requests
-    for i in range(5):
-        time.sleep(0.1)
+    def check_response():
         resp = app.get('/', expect_errors=True)
         if resp.status_code == 200:
-            break
-    else:
-        raise PidAppFailedException()
+            return resp
+        return False
+    _wait_for(check_response)
     return app
+
+
+@pytest.fixture
+def wait_for_response(pidapp):
+    def _wait_for_response(success_condition):
+        def check_response():
+            resp = pidapp.get('/', expect_errors=True)
+            if success_condition(resp):
+                return resp
+            return False
+        _wait_for(check_response)
+    return _wait_for_response
