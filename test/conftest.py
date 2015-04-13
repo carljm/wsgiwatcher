@@ -90,11 +90,11 @@ def pidapp(pidapp_url):
 
 @pytest.fixture
 def wait_for_response(pidapp):
-    def _wait_for_response(success_condition):
+    def _wait_for_response(success_condition, retries=5):
         def check_response():
             resp = pidapp.get('/', expect_errors=True)
             if success_condition(resp):
                 return resp
             return False
-        _wait_for(check_response)
+        return _wait_for(check_response, retries=retries)
     return _wait_for_response
