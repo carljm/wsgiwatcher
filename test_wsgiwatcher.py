@@ -22,3 +22,7 @@ def pidapp_file(tmpdir):
 
     """
     filepath = tmpdir / 'pidapp.py'
+
+
+def test_test():
+    pass
