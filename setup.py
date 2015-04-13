@@ -29,7 +29,7 @@ setup(
     version='1.0.dev0',
     author='Carl Meyer, David Glick',
     author_email='',
-    description='Watch files used by a WSGI app and reload the server when they change',
+    description='Reload a WSGI server when files change',
     long_description=README + '\n\n' + CHANGES,
     license='MIT',
     keywords='wsgi server reload watch',
