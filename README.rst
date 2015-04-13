@@ -6,4 +6,4 @@ WSGI Watcher aims for compatibility with multiple WSGI server implementations
 on multiple platforms. It has been tested on CPython 2.6-3.4, PyPy, and PyPy3
 on Linux and OS X.
 
-For more information see the `docs` directory.
+For more information see the `docs` directory. 
