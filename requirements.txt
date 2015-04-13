@@ -1,0 +1,7 @@
+watchdog==0.8.3
+PyYAML==3.11
+argh==0.26.1
+pathtools==0.1.2
+
+pytest==2.7.0
+py==1.4.26
