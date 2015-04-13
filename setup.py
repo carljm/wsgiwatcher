@@ -12,7 +12,7 @@ docs_extras = [
 
 testing_extras = [
     'pytest',
-    'pytest-cov',
+    'coverage',
     'WebTest',
     'WSGIProxy2',
 ]
