@@ -52,26 +52,23 @@ class Monitor(Observer):
 
 
 class Server(threading.Thread):
-    def __init__(self, get_application, serve_forever):
+    def __init__(self, serve_forever):
         super(Server, self).__init__()
-        self.get_application = get_application
         self.serve_forever = serve_forever
         self.daemon = True
 
     def run(self):
-        app = self.get_application()
-        self.serve_forever(app)
+        self.serve_forever()
 
 
 class Worker(Process):
-    def __init__(self, get_application, serve_forever, parent_pid):
+    def __init__(self, serve_forever, parent_pid):
         super(Worker, self).__init__()
-        self.get_application = get_application
         self.serve_forever = serve_forever
         self.parent_pid = parent_pid
 
     def run(self):
-        server = Server(self.get_application, self.serve_forever)
+        server = Server(self.serve_forever)
         server.start()
 
         monitor = Monitor()
@@ -83,15 +80,15 @@ class Worker(Process):
             monitor.update_paths()
 
 
-def run_server_until_file_changes(get_application, serve_forever):
-    worker = Worker(get_application, serve_forever, os.getpid())
+def run_server_until_file_changes(serve_forever):
+    worker = Worker(serve_forever, os.getpid())
     worker.start()
     print("WSGIWatcher: started server with PID %s" % worker.pid)
     worker.join()
     print("WSGIWatcher: server with PID %s done" % worker.pid)
 
 
-def run(get_application, serve_forever):
+def run(serve_forever):
     while True:
-        run_server_until_file_changes(get_application, serve_forever)
+        run_server_until_file_changes(serve_forever)
         time.sleep(0.5)

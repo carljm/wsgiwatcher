@@ -19,15 +19,12 @@ PIDAPP_PORT_ENVVAR = 'WSGIWATCHER_TEST_PORT'
 def pidapp_file(tmpdir):
     """Return path to a file containing a simple WSGI application.
 
-    File has top-level function ``get_application()`` which takes no arguments
-    and returns a WSGI app which responds to all requests with its own
-    PID. Also has top-level function ``serve_forever(app)`` which accepts an
-    app and serves that app forever (using wsgiref) on the host and port
-    specified in the environment variables ``WSGIWATCHER_TEST_HOST`` and
-    ``WSGIWATCHER_TEST_PORT``.
+    File has top-level function ``serve_forever()`` which serves the app
+    forever (using wsgiref) on the host and port specified in the environment
+    variables ``WSGIWATCHER_TEST_HOST`` and ``WSGIWATCHER_TEST_PORT``.
 
-    If run as a script, this file passes the two above callables to wsgiwatcher
-    and starts up an auto-reloading server.
+    If run as a script, this file passes the above ``serve_forever()`` callable
+    to wsgiwatcher and starts it up under the auto-reload monitor.
 
     """
     source = HERE / 'pidapp.py'
