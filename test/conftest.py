@@ -47,6 +47,7 @@ def _pidapp_process_host_port(pidapp_file):
     # Only shut down if we haven't been shut down already.
     if process.poll() is None:
         process.terminate()
+        process.wait()
 
 
 @pytest.fixture
@@ -92,11 +93,11 @@ def pidapp(pidapp_url):
 
 @pytest.fixture
 def wait_for_response(pidapp):
-    def _wait_for_response(success_condition, retries=5):
+    def _wait_for_response(success_condition, retries=5, interval=0.1):
         def check_response():
             resp = pidapp.get('/', expect_errors=True)
             if success_condition(resp):
                 return resp
             return False
-        return _wait_for(check_response, retries=retries)
+        return _wait_for(check_response, retries=retries, interval=interval)
     return _wait_for_response
