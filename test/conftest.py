@@ -48,10 +48,17 @@ def testapp_file(tmpdir, testapp_file_source_path, testapp_file_target_path):
 
 @pytest.yield_fixture
 def _testapp_process_host_port(testapp_file):
-    """Execute ``testapp_file`` in subprocess; yield (popen-obj, host, port)."""
+    """Execute watcher in subprocess; yield (popen-obj, host, port)."""
     host, port = get_free_port()
     process = Popen(
-        [sys.executable, str(testapp_file)],
+        [
+            sys.executable,
+            '-c',
+            (
+                'from wsgiwatcher import watcher; watcher.run(%r)'
+                % str(testapp_file)
+            ),
+        ],
         env={TESTAPP_HOST_ENVVAR: host, TESTAPP_PORT_ENVVAR: str(port)},
     )
     yield (process, host, port)
@@ -131,7 +138,7 @@ def copy_testapp_file_with_response(
         testapp_file_contents, testapp_file_target_path):
     def _replace_and_copy(response_text):
         new_contents = testapp_file_contents.replace(
-            "'response'", response_text)
+            "'response'", repr(response_text))
         with testapp_file_target_path.open('w') as fh:
             fh.write(new_contents)
             fh.flush()
