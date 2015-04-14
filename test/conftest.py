@@ -44,6 +44,7 @@ def _pidapp_process_host_port(pidapp_file):
         env={PIDAPP_HOST_ENVVAR: host, PIDAPP_PORT_ENVVAR: str(port)},
     )
     yield (process, host, port)
+    # Only shut down if we haven't been shut down already.
     if process.poll() is None:
         process.terminate()
 

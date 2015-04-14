@@ -17,8 +17,9 @@ def test_pidapp_reloads_after_file_changed(
 def test_kills_worker_processes(pidapp, pidapp_process):
     """Shutting down monitor master process kills worker processes."""
     pidapp_process.terminate()
+    # Terminate() just sends SIGTERM, now we wait for it to actually terminate
     pidapp_process.wait()
-    # Give a "poll interval" time for child to notice parent is gone
+    # Parent is gone, wait a "poll interval" time for child to notice
     time.sleep(1)
 
     assert pidapp_process.returncode is not None
