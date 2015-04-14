@@ -1,4 +1,4 @@
-import time
+from __future__ import unicode_literals
 
 
 def test_pidapp_responds_with_200_status(pidapp):
@@ -6,12 +6,10 @@ def test_pidapp_responds_with_200_status(pidapp):
 
 
 def test_pidapp_reloads_after_file_changed(
-        pidapp_file, pidapp, wait_for_response):
+        pidapp, append_to_pidapp_file, wait_for_response):
     pid1 = pidapp.get('/', status=200).body
-    with open(pidapp_file, 'a') as fh:
-        fh.write('\n')
-    resp = wait_for_response(
-        lambda r: r.body != pid1, retries=10, interval=0.2)
+    append_to_pidapp_file('\n')
+    resp = wait_for_response(lambda r: r.body != pid1)
     assert resp.body != pid1
 
 
@@ -20,12 +18,19 @@ def test_kills_worker_processes(pidapp_process, wait_for_response):
     pidapp_process.terminate()
     # Terminate() just sends SIGTERM, now we wait for it to actually terminate
     pidapp_process.wait()
-    # Parent is gone, wait a "poll interval" time for child to notice
-    time.sleep(1)
 
-    assert pidapp_process.returncode is not None
-
-    resp = wait_for_response(
-        lambda r: r.status_code == 502)
+    resp = wait_for_response(lambda r: r.status_code == 502)
 
     assert resp.status_code == 502
+
+
+def test_syntax_error_doesnt_kill_watcher(
+        pidapp, append_to_pidapp_file, wait_for_response):
+    """Adding a syntax error to app kills server, but not watcher."""
+    append_to_pidapp_file('\nif True:\n')  # this is a syntax error
+
+    wait_for_response(lambda r: r.status_code == 502)
+
+    append_to_pidapp_file('    pass\n')  # now it's not!
+
+    wait_for_response(lambda r: r.status_code == 200)

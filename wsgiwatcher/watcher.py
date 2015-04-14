@@ -1,4 +1,4 @@
-from multiprocessing import Process, Event
+from multiprocessing import Process
 import os
 import threading
 import time
@@ -8,37 +8,38 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
-class Monitor(FileSystemEventHandler):
-    def __init__(self, files_changed_event, parent_pid, poll_interval=1):
-        self.files_changed_event = files_changed_event
-        self.parent_pid = parent_pid
-        self.poll_interval = poll_interval
-        self.paths = set()
-        self.observer_thread = None
-        self.poll_thread = None
-
-    def watch_until_changes(self):
-        self.observer_thread = Observer()
-        self.observer_thread.setDaemon(True)
-
-        self.update_paths()
-
-        self.observer_thread.start()
-
-        while not self.files_changed_event.is_set():
-            time.sleep(self.poll_interval)
-            if os.getppid() != self.parent_pid:
-                # Our parent has gone away, we should too
-                break
-            self.update_paths()
+class FlagOnAnyChangeHandler(FileSystemEventHandler):
+    def __init__(self):
+        super(FlagOnAnyChangeHandler, self).__init__()
+        self.file_changed = False
 
     def on_any_event(self, event):
-        self.files_changed_event.set()
+        self.file_changed = True
+
+
+class Monitor(Observer):
+    def __init__(self):
+        super(Monitor, self).__init__()
+        self.module_ids = set()
+        self.paths = set()
+        self.handler = FlagOnAnyChangeHandler()
+        self.daemon = True
+
+    def changed(self):
+        return self.handler.file_changed
+
+    def run(self):
+        self.update_paths()
+        super(Observer, self).run()
 
     def update_paths(self):
         """Check sys.modules for paths to add to our path set."""
         modules = list(sys.modules.values())
         for module in modules:
+            module_id = id(module)
+            if module_id in self.module_ids:
+                continue
+            self.module_ids.add(module_id)
             try:
                 filename = module.__file__
             except (AttributeError, ImportError):
@@ -47,34 +48,47 @@ class Monitor(FileSystemEventHandler):
                 dirname = os.path.dirname(filename)
                 if os.path.isdir(dirname) and dirname not in self.paths:
                     self.paths.add(dirname)
-                    self.observer_thread.schedule(self, dirname)
+                    self.schedule(self.handler, dirname)
 
 
-class Worker(Process):
-    def __init__(self, get_application, serve_forever, done, parent_pid):
-        super(Worker, self).__init__()
+class Server(threading.Thread):
+    def __init__(self, get_application, serve_forever):
+        super(Server, self).__init__()
         self.get_application = get_application
         self.serve_forever = serve_forever
-        self.done = done
-        self.parent_pid = parent_pid
+        self.daemon = True
 
     def run(self):
         app = self.get_application()
+        self.serve_forever(app)
 
-        server_thread = threading.Thread(target=self.serve_forever, args=[app])
-        server_thread.setDaemon(True)
-        server_thread.start()
 
-        monitor = Monitor(self.done, self.parent_pid)
-        monitor.watch_until_changes()
+class Worker(Process):
+    def __init__(self, get_application, serve_forever, parent_pid):
+        super(Worker, self).__init__()
+        self.get_application = get_application
+        self.serve_forever = serve_forever
+        self.parent_pid = parent_pid
+
+    def run(self):
+        server = Server(self.get_application, self.serve_forever)
+        server.start()
+
+        monitor = Monitor()
+        monitor.start()
+
+        # Continue until a file changes or our parent goes away.
+        while (os.getppid() == self.parent_pid) and not monitor.changed():
+            time.sleep(1)
+            monitor.update_paths()
 
 
 def run_server_until_file_changes(get_application, serve_forever):
-    worker_done = Event()
-    worker = Worker(get_application, serve_forever, worker_done, os.getpid())
+    worker = Worker(get_application, serve_forever, os.getpid())
     worker.start()
-    while not worker_done.is_set():
-        time.sleep(0.2)
+    print("WSGIWatcher: started server with PID %s" % worker.pid)
+    worker.join()
+    print("WSGIWatcher: server with PID %s done" % worker.pid)
 
 
 def run(get_application, serve_forever):

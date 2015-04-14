@@ -1,3 +1,4 @@
+import os
 from subprocess import Popen
 import sys
 import time
@@ -93,11 +94,23 @@ def pidapp(pidapp_url):
 
 @pytest.fixture
 def wait_for_response(pidapp):
-    def _wait_for_response(success_condition, retries=5, interval=0.1):
+    def _wait_for_response(
+            success_condition, retries=10, interval=0.2, initial_wait=0.5):
         def check_response():
             resp = pidapp.get('/', expect_errors=True)
             if success_condition(resp):
                 return resp
             return False
+        time.sleep(initial_wait)
         return _wait_for(check_response, retries=retries, interval=interval)
     return _wait_for_response
+
+
+@pytest.fixture
+def append_to_pidapp_file(pidapp_file):
+    def _append(text):
+        with open(pidapp_file, 'a') as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+    return _append
