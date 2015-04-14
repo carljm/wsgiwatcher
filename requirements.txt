@@ -18,3 +18,5 @@ coverage==3.7.1
 
 tox==1.9.2
 virtualenv==12.1.1
+
+pretend==1.0.8

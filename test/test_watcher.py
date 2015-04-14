@@ -1,36 +1,39 @@
-from __future__ import unicode_literals
+import os
+
+from pretend import stub
+
+from wsgiwatcher import watcher
 
 
-def test_pidapp_responds_with_200_status(pidapp):
-    pidapp.get('/', status=200)
+HERE = os.path.dirname(__file__)
 
 
-def test_pidapp_reloads_after_file_changed(
-        pidapp, append_to_pidapp_file, wait_for_response):
-    pid1 = pidapp.get('/', status=200).body
-    append_to_pidapp_file('\n')
-    resp = wait_for_response(lambda r: r.body != pid1)
-    assert resp.body != pid1
+class TestGetModuleDirs(object):
+    def test_yields_dirnames_of_module_files(self):
+        modules = [stub(**{'__file__': __file__})]
+        paths = list(watcher.get_module_dirs(modules))
 
+        assert paths == [os.path.dirname(__file__)]
 
-def test_kills_worker_processes(pidapp_process, wait_for_response):
-    """Shutting down monitor master process kills worker processes."""
-    pidapp_process.terminate()
-    # Terminate() just sends SIGTERM, now we wait for it to actually terminate
-    pidapp_process.wait()
+    def test_bypasses_if_no_file(self):
+        modules = [stub(), stub(**{'__file__': None})]
+        paths = list(watcher.get_module_dirs(modules))
 
-    resp = wait_for_response(lambda r: r.status_code == 502)
+        assert paths == []
 
-    assert resp.status_code == 502
+    def test_bypasses_if_dir_does_not_exist(self):
+        modules = [stub(**{'__file__': '/does/not/exist'})]
+        paths = list(watcher.get_module_dirs(modules))
 
+        assert paths == []
 
-def test_syntax_error_doesnt_kill_watcher(
-        pidapp, append_to_pidapp_file, wait_for_response):
-    """Adding a syntax error to app kills server, but not watcher."""
-    append_to_pidapp_file('\nif True:\n')  # this is a syntax error
+    def test_makes_path_absolute(self):
+        modules = [stub(**{'__file__': 'foo.py'})]
+        old_dir = os.getcwd()
+        os.chdir(HERE)
+        try:
+            paths = list(watcher.get_module_dirs(modules))
+        finally:
+            os.chdir(old_dir)
 
-    wait_for_response(lambda r: r.status_code == 502)
-
-    append_to_pidapp_file('    pass\n')  # now it's not!
-
-    wait_for_response(lambda r: r.status_code == 200)
+        assert paths == [os.path.dirname(__file__)]

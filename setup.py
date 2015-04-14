@@ -15,6 +15,7 @@ testing_extras = [
     'coverage',
     'WebTest',
     'WSGIProxy2',
+    'pretend',
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))

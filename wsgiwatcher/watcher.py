@@ -34,21 +34,10 @@ class Monitor(Observer):
 
     def update_paths(self):
         """Check sys.modules for paths to add to our path set."""
-        modules = list(sys.modules.values())
-        for module in modules:
-            module_id = id(module)
-            if module_id in self.module_ids:
-                continue
-            self.module_ids.add(module_id)
-            try:
-                filename = module.__file__
-            except (AttributeError, ImportError):
-                continue
-            if filename is not None:
-                dirname = os.path.dirname(filename)
-                if os.path.isdir(dirname) and dirname not in self.paths:
-                    self.paths.add(dirname)
-                    self.schedule(self.handler, dirname)
+        for dirname in get_module_dirs():
+            if dirname not in self.paths:
+                self.paths.add(dirname)
+                self.schedule(self.handler, dirname)
 
 
 class Server(threading.Thread):
@@ -92,3 +81,17 @@ def run(serve_forever):
     while True:
         run_server_until_file_changes(serve_forever)
         time.sleep(0.5)
+
+
+def get_module_dirs(modules=None):
+    """Yield directories containing imported modules."""
+    modules = modules or list(sys.modules.values())
+    for module in modules:
+        try:
+            filename = module.__file__
+        except (AttributeError, ImportError):
+            continue
+        if filename is not None:
+            dirname = os.path.dirname(os.path.abspath(filename))
+            if os.path.isdir(dirname):
+                yield dirname
