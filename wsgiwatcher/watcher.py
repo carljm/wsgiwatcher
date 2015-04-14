@@ -33,14 +33,15 @@ class Monitor(FileSystemEventHandler):
 
     def update_paths(self):
         """Check sys.modules for paths to add to our path set."""
-        for module in sys.modules.values():
+        modules = list(sys.modules.values())
+        for module in modules:
             try:
                 filename = module.__file__
             except (AttributeError, ImportError):
                 continue
             if filename is not None:
                 dirname = os.path.dirname(filename)
-                if dirname not in self.paths:
+                if os.path.isdir(dirname) and dirname not in self.paths:
                     self.paths.add(dirname)
                     self.observer_thread.schedule(self, dirname)
 
