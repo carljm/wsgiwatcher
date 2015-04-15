@@ -1,7 +1,5 @@
 from waitress import serve
 
-from wsgiwatcher import watcher
-
 
 def handler_app(environ, start_response):
     response_body = b'Works fine'
@@ -19,4 +17,5 @@ def handler_app(environ, start_response):
 def serve_forever():
     serve(handler_app)
 
-watcher.run(serve_forever)
+if True:
+    pass

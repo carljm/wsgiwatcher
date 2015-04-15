@@ -5,8 +5,6 @@ import multiprocessing
 import gunicorn.app.base
 from gunicorn.six import iteritems
 
-from wsgiwatcher import watcher
-
 
 def number_of_workers():
     return (multiprocessing.cpu_count() * 2) + 1
@@ -42,13 +40,9 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
         return self.application
 
 
-def serve():
+def serve_forever():
     options = {
         'bind': '%s:%s' % ('127.0.0.1', '8080'),
         'workers': number_of_workers(),
     }
     StandaloneApplication(handler_app, options).run()
-
-
-if __name__ == '__main__':
-    watcher.run(serve)

@@ -60,7 +60,11 @@ def _testapp_process_host_port(tmpdir, testapp_file):
                 "watcher.run('testapp.serve_forever', 1)"
             ),
         ],
-        env={TESTAPP_HOST_ENVVAR: host, TESTAPP_PORT_ENVVAR: str(port)},
+        env={
+            TESTAPP_HOST_ENVVAR: host,
+            TESTAPP_PORT_ENVVAR: str(port),
+            'PYTHONDONTWRITEBYTECODE': '1',
+        },
     )
     yield (process, host, port)
     # Only shut down if we haven't been shut down already.
@@ -113,12 +117,13 @@ def testapp(testapp_url):
 @pytest.fixture
 def wait_for_response(testapp):
     def _wait_for_response(
-            success_condition, retries=10, interval=0.5):
+            success_condition, retries=10, interval=1, initial_wait=1):
         def check_response():
             resp = testapp.get('/', expect_errors=True)
             if success_condition(resp):
                 return resp
             return False
+        time.sleep(initial_wait)
         return _wait_for(check_response, retries=retries, interval=interval)
     return _wait_for_response
 
@@ -138,7 +143,7 @@ def copy_testapp_file_with_response(
         testapp_file_contents, testapp_file_target_path):
     def _replace_and_copy(response_text):
         new_contents = testapp_file_contents.replace(
-            "'response'", repr(response_text))
+            "'response'", "'%s'" % response_text)
         with testapp_file_target_path.open('w') as fh:
             fh.write(new_contents)
             fh.flush()

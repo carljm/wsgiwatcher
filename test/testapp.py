@@ -3,7 +3,12 @@ from wsgiref.simple_server import make_server
 
 
 def application(environ, start_response):
-    start_response('200 OK', [('Content-Type', 'text/plain')])
+    headers = [
+        ('Content-Type', 'text/plain'),
+        ('X-Server-PID', str(os.getpid())),
+        ('X-Server-Path', __file__),
+    ]
+    start_response('200 OK', headers)
     return [str('response').encode('utf-8')]
 
 
