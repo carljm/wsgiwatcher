@@ -16,6 +16,3 @@ def handler_app(environ, start_response):
 
 def serve_forever():
     serve(handler_app)
-
-if True:
-    pass
