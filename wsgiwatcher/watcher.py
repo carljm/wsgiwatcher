@@ -1,3 +1,7 @@
+from __future__ import print_function
+
+from functools import partial
+import importlib
 from multiprocessing import Process, Event
 import os
 try:
@@ -18,7 +22,9 @@ class FlagOnAnyChangeHandler(FileSystemEventHandler):
         self.event = event
 
     def on_any_event(self, event):
+        print('file event!')
         self.event.set()
+        interrupt_main()
 
 
 class Monitor(Observer):
@@ -28,9 +34,7 @@ class Monitor(Observer):
         self.handler = FlagOnAnyChangeHandler(done_event)
         self.done_event = done_event
         self.parent_pid = parent_pid
-        self.daemon = True
         self.poll_thread = threading.Thread(target=self.poll)
-        self.poll_thread.daemon = True
 
         for path in self.paths:
             self.schedule(self.handler, path)
@@ -44,6 +48,7 @@ class Monitor(Observer):
         while (os.getppid() == self.parent_pid):
             time.sleep(1)
             self.update_paths()
+        print('parent died, interrupting main thread')
         interrupt_main()
 
     def update_paths(self):
@@ -55,41 +60,49 @@ class Monitor(Observer):
 
 
 class Worker(Process):
-    def __init__(self, script_file, done_event, parent_pid):
+    def __init__(self, serve_forever_path, done_event, parent_pid):
         super(Worker, self).__init__()
-        self.script_file = script_file
+        self.serve_forever_path = serve_forever_path
         self.done_event = done_event
         self.parent_pid = parent_pid
 
     def run(self):
-        monitor = Monitor(
-            self.done_event,
-            self.parent_pid,
-            extra_files=[os.path.dirname(os.path.abspath(self.script_file))],
-        )
+        modname, funcname = self.serve_forever_path.rsplit('.', 1)
+        module = importlib.import_module(modname)
+        func = getattr(module, funcname)
+
+        monitor = Monitor(self.done_event, self.parent_pid)
         monitor.start()
 
-        with open(self.script_file) as f:
-            code = compile(f.read(), self.script_file, 'exec')
-            exec(code, {}, {})
+        func()
 
 
-def run_server_until_file_changes(script_file):
+def run_server_until_file_changes(serve_forever_path, verbosity=0):
     worker_done = Event()
-    worker = Worker(script_file, worker_done, os.getpid())
+    worker = Worker(serve_forever_path, worker_done, os.getpid())
     worker.start()
-    print("WSGIWatcher: started server with PID %s" % worker.pid)
-    worker_done.wait()
-    print("WSGIWatcher: terminating server with PID %s" % worker.pid)
-    worker.terminate()
-    print("WSGIWatcher: waiting for server with PID %s to quit" % worker.pid)
+    log = Log(verbosity)
+    log.info("started server with PID %s" % worker.pid)
+    log.debug("waiting for server with PID %s to quit" % worker.pid)
     worker.join()
-    print("WSGIWatcher: server with PID %s done" % worker.pid)
+    log.info("server with PID %s done" % worker.pid)
 
 
-def run(script_file):
+class Log(object):
+    def __init__(self, verbosity):
+        self.debug = self.info = lambda s: None
+        if verbosity:
+            self.info = partial(self.send, level='info')
+            if verbosity > 1:
+                self.debug = partial(self.send, level='debug')
+
+    def send(self, s, level):
+        print("WSGIWatcher (%s): %s" % (level, s))
+
+
+def run(serve_forever_path, verbosity=0):
     while True:
-        run_server_until_file_changes(script_file)
+        run_server_until_file_changes(serve_forever_path, verbosity)
         time.sleep(0.5)
 
 

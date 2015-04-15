@@ -47,16 +47,17 @@ def testapp_file(tmpdir, testapp_file_source_path, testapp_file_target_path):
 
 
 @pytest.yield_fixture
-def _testapp_process_host_port(testapp_file):
+def _testapp_process_host_port(tmpdir, testapp_file):
     """Execute watcher in subprocess; yield (popen-obj, host, port)."""
     host, port = get_free_port()
+    os.chdir(str(tmpdir))
     process = Popen(
         [
             sys.executable,
             '-c',
             (
-                'from wsgiwatcher import watcher; watcher.run(%r)'
-                % str(testapp_file)
+                "from wsgiwatcher import watcher; "
+                "watcher.run('testapp.serve_forever', 1)"
             ),
         ],
         env={TESTAPP_HOST_ENVVAR: host, TESTAPP_PORT_ENVVAR: str(port)},
@@ -112,13 +113,12 @@ def testapp(testapp_url):
 @pytest.fixture
 def wait_for_response(testapp):
     def _wait_for_response(
-            success_condition, retries=10, interval=0.2, initial_wait=0.5):
+            success_condition, retries=10, interval=0.5):
         def check_response():
             resp = testapp.get('/', expect_errors=True)
             if success_condition(resp):
                 return resp
             return False
-        time.sleep(initial_wait)
         return _wait_for(check_response, retries=retries, interval=interval)
     return _wait_for_response
 
