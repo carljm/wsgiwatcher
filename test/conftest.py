@@ -38,9 +38,6 @@ def testapp_file(tmpdir, testapp_file_source_path, testapp_file_target_path):
     forever (using wsgiref) on the host and port specified in the environment
     variables ``WSGIWATCHER_TEST_HOST`` and ``WSGIWATCHER_TEST_PORT``.
 
-    If run as a script, this file passes the above ``serve_forever()`` callable
-    to wsgiwatcher and starts it up under the auto-reload monitor.
-
     """
     testapp_file_source_path.copy(testapp_file_target_path)
     return str(testapp_file_target_path)
